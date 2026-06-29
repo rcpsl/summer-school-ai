@@ -1,102 +1,93 @@
-# Monday — Capture data, label it, and make the computer *detect* signs
+# Wednesday — Make the car drive itself
 
-Today **you** build the data and teach the computer to recognize traffic signs.
-Training the model is one click — the real work (and the real learning) is
-collecting good pictures, labelling them, and testing.
+On Monday your model learned to **recognize** signs. Today you make it **drive** the
+car: stop at stop signs, obey speed limits, and go on green. You'll finish the
+**`brain.py`** Controller. Read this whole page — it tells you exactly what to write.
 
-You will only edit **one file: `detect.py`** (one or two lines).
+You only edit **`brain.py`**.
 
 ---
 
-## The class names — use these EXACT spellings everywhere
+## The class names (same as Monday)
 ```
 Stop    Speed25    Speed55    Red    Green    Nothing
 ```
-Folders, Teachable Machine classes — all must match these exactly (capital letters too).
 
----
+## 0) Set up + bring your model
+- Use the same conda env: `conda activate trafficsim`
+- Put your Monday **`model_unquant.tflite`** and **`labels.txt`** in this folder.
 
-## 0) Set up the environment (once)
+## 1) Run it
 ```bash
-Setup anaconda in your machine
+python wednesday_app.py
 ```
+- Click **Mode** to switch **MANUAL ↔ AUTO**.
+  - **MANUAL** — hold the **UP arrow** to drive (let go to stop).
+  - **AUTO** — the model drives. (AUTO is **gray/disabled** until a model is in the folder.)
+- Press **Q** to quit.
 
-```bash
-conda env create -f environment.yml
-conda activate trafficsim
-```
-*(If that doesn't work: `conda create -n trafficsim python=3.10 -y` → `conda activate trafficsim` → `pip install -r requirements.txt`.)*
-
----
-
-## 1) Record pictures of the signs
-```bash
-python monday_app.py
-```
-A window opens with a car on a road and a cyan **camera box**.
-
-- **Hold the UP ARROW** to drive forward. Signs scroll toward the camera box. Let go to stop.
-- When a sign is **inside the camera box**, click **Record** to start saving pictures; click it again to **stop**.
-- Drive on, line up the **next** sign, record again. Stopping and restarting Record **keeps** your old pictures (it never overwrites them).
-- Also record some **empty road** — those are your `Nothing` pictures.
-- Aim for about **30–40 pictures of each sign**. Press **Q** to quit.
-
-All pictures are saved into a folder called **`frames/`**.
-
-> Tip: record each sign at slightly different moments so the pictures vary a little — that makes a stronger model.
+Run it now in **AUTO** before editing — the car drives, but speed and turning won't be
+right yet, because you haven't finished the Controller.
 
 ---
 
-## 2) Label your pictures (sort them into folders)
-This is the important part — **you** decide what each picture is.
+## 2) What the car SHOULD do (the behavior you're building)
+- **Speed signs set a *lasting* limit.** When it sees **Speed55**, it should go at 55 and
+  **keep** going 55 — past empty road, green lights, everything — until it sees **Speed25**,
+  then it goes 25 and keeps it. (A speed limit stays until a new speed sign changes it.)
+- **Arrows steer.** `Left` → steer left, `Right` → steer right (only if you trained those).
+- **Stop sign** → stop, wait ~2 seconds, then drive on.
+- **Red light** → stop until it turns **Green**, then go.
 
-1. Open the **`frames/`** folder.
-2. Make 6 new folders, named exactly: `Stop`, `Speed25`, `Speed55`, `Red`, `Green`, `Nothing`.
-3. Drag each picture into the folder for the sign it shows (empty road → `Nothing`).
+## 3) Your job — finish `Controller.update()` in `brain.py`
+There are exactly **two TODOs**. The hard "waiting" part is already written for you (it's
+explained in section 4 so you understand it).
 
----
-
-## 3) Train in Teachable Machine
-1. Go to **https://teachablemachine.withgoogle.com** → **Get Started** → **Image Project** → **Standard image model**.
-2. Make **6 classes**, named exactly like the folders above.
-3. For each class, click **Upload** and drag in the pictures from the matching folder.
-4. Click **Train Model**.
-
-## 4) Export the model into this folder
-1. **Export Model** → **TensorFlow Lite** tab → **Floating point** → **Download my model**.
-2. Unzip it. Put **`model_unquant.tflite`** and **`labels.txt`** in **this** folder (next to `monday_app.py`).
-
----
-
-## 5) Finish the code — edit `detect.py`
-Open **`detect.py`** and complete the two TODOs:
-
+**TODO 1 — the lasting speed limit.** A speed sign should change `self.limit`:
 ```python
-def predict_label(probs, labels):
-    # TODO 1: the index of the biggest score
-    best = int(np.argmax(probs))                 # <-- write this
-    # TODO 2 (optional): not sure enough -> "Nothing"
-    if float(probs[best]) < THRESHOLD:           # <-- and this
-        return "Nothing"
-    return labels[best]
+if label in SPEED_LIMITS:
+    self.limit = SPEED_LIMITS[label]     # SPEED_LIMITS = {"Speed25": 25, "Speed55": 55}
 ```
-- `probs` is the list of scores (one per class); `np.argmax` gives the **position of the biggest** one.
-- `labels[best]` is the **name** at that position.
+Because `self.limit` only changes here, it naturally *stays the same* until the next speed sign.
 
-Save the file.
-
-## 6) Watch it detect
-```bash
-python monday_app.py
+**TODO 2 — how fast and which way.** Turn the limit into a speed, and read arrows:
+```python
+cruise = self.limit / 10.0                                   # e.g. 55 -> 5.5 pixels/frame
+steer  = -1 if label == "Left" else (1 if label == "Right" else 0)
 ```
-Now the **Autodetect** button is colored (a model is loaded). Click it, then drive a sign into the camera box — the bottom bar shows what the model thinks it is.
 
-**If it's often wrong:** go back to step 1, record **more and more varied** pictures of the signs it confuses (and more `Nothing`), re-sort, and re-train. This is the real lesson — the model is only as good as the data you give it.
+Save and run `python wednesday_app.py` in AUTO. The bottom bar shows `speed 25/55`, and the
+car should hold its limit until a new speed sign.
 
 ---
 
-## Troubleshooting
-- **Autodetect stays gray** → there's no model in the folder yet. Do steps 3–4, then restart the app.
-- **It keeps guessing the wrong sign** → not enough / not varied enough training pictures. Record more.
-- **`tensorflow` won't install** → make sure you're on **Python 3.10** inside the `trafficsim` env.
-- **Wrong camera/window** → not used here (this is a simulator, no webcam needed).
+## 4) How the "waiting" logic works (this part is GIVEN to you)
+A red light and a stop sign behave **differently**, so the Controller treats them differently:
+
+- **Red light → wait for green.** While the model sees `Red`, the car stays at speed 0. The
+  traffic light turns **green on its own** after several seconds; the moment the model sees
+  `Green`, the car drives on. (A real red light makes you wait however long it takes.)
+- **Stop sign → timed stop.** When the car sees `Stop`, it stops for `HOLD` seconds (2 s), then
+  drives on. A `COOLDOWN` (5 s) then makes it *ignore* that stop sign so it can roll past without
+  stopping over and over on the same one.
+
+To do this the Controller has two states, **DRIVE** and **STOPPED**, and it remembers whether it
+stopped for a *stop sign* (use the 2-second timer) or for a *red light* (wait for green).
+
+> **Want a challenge?** Try writing this part yourself from the description above. Otherwise leave
+> the given code as-is — it already works.
+
+---
+
+## 5) Tuning (optional, in the files)
+- `brain.py`: `Controller.HOLD` (wait time), `Controller.COOLDOWN` (time before it can stop again),
+  `SPEED_LIMITS`, `DEFAULT_LIMIT`.
+- `brain.py`: `CONFIDENCE_THRESHOLD` (ignore weak guesses), `DEBOUNCE_FRAMES` (steadiness).
+
+## 6) Troubleshooting
+- **Car ignores everything / never stops** → the label names must be exactly
+  `Stop, Speed25, Speed55, Red, Green, Nothing`. Check the bottom bar: does it literally say `Stop`?
+- **Speed shows the wrong number / always 35** → finish **TODO 1** (the limit isn't being set).
+- **It crawls / stops over and over at a stop sign** → make sure you didn't change the given
+  waiting logic; the cooldown is what lets it drive past.
+- **AUTO is gray** → no model in the folder. Add `model_unquant.tflite` + `labels.txt` and restart.
