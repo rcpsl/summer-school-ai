@@ -1,0 +1,12 @@
+# student-generated data and models
+frames/
+dataset/
+*.tflite
+labels.txt
+*.zip
+
+# python / os junk
+__pycache__/
+*.pyc
+.DS_Store
+.ipynb_checkpoints/

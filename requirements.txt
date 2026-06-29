@@ -1,0 +1,4 @@
+numpy
+pygame
+tensorflow
+# Lightweight alternative (e.g. Raspberry Pi) instead of tensorflow:  tflite-runtime
