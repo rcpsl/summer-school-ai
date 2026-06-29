@@ -74,9 +74,9 @@ Open **`detect.py`** and complete the two TODOs:
 ```python
 def predict_label(probs, labels):
     # TODO 1: the index of the biggest score
-    best = int(np.argmax(probs))                 # <-- write this
+    best =  # <-- write in this line
     # TODO 2 (optional): not sure enough -> "Nothing"
-    if float(probs[best]) < THRESHOLD:           # <-- and this
+    if Some condition:           # <-- and this line
         return "Nothing"
     return labels[best]
 ```

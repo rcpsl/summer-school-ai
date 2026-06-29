@@ -15,13 +15,12 @@ def predict_label(probs, labels):
     #
     # ============================ TODO 1 ============================
     # Find the position (index) of the BIGGEST score.
-    #   Hint:   best = int(np.argmax(probs))
+    #   Hint:   you can use np.argmax() to find the index of the biggest value in a list.
     best = 0          # <-- replace this line using the hint
     #
     # ============================ TODO 2 ============================
     # (optional) If the biggest score is too small, we aren't sure.
     # If  probs[best]  is less than  THRESHOLD , return "Nothing".
-    #   Hint:   if float(probs[best]) < THRESHOLD: return "Nothing"
     #
     # ===============================================================
     return labels[best]
