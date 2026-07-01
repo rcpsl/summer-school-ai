@@ -1,98 +1,66 @@
 """
-brain.py  —  the driving decision code.  (STUDENT version)
+brain.py  —  the CONTROL half of the self-driving car.   (STUDENT)
 
-classify() and Debouncer are done for you (you wrote classify on Monday).
-You will finish the Controller — see the two TODOs. The README explains the
-whole control idea step by step, including the waiting logic that is given to you.
+The detection code (detect.py) gives us a steady "action" each moment, one of:
+    "Stop", "Red", "Green", "Speed25", "Speed55", "Nothing".
+
+YOUR AFTERNOON TASK: finish decide_speed() so the car follows three rules:
+    1. Speed limit  — a speed sign sets a limit that STAYS until a new speed sign.
+    2. Red light    — stop and wait; drive again once it is green.
+    3. Stop sign    — stop for a couple of seconds, then drive on.
+
+No steering yet. decide_speed() returns ONE number: the target speed (0 = stopped).
+Read the README section "The Controller" — it explains every step. Then fill the TODOs.
 """
-import time
-import numpy as np
 
-CONFIDENCE_THRESHOLD = 0.6
-DEBOUNCE_FRAMES = 4
-
-
-def classify(probs, labels, threshold=CONFIDENCE_THRESHOLD):
-    i = int(np.argmax(probs))
-    conf = float(probs[i])
-    if conf < threshold:
-        return "UNSURE", conf
-    return labels[i], conf
-
-
-class Debouncer:
-    def __init__(self, frames=DEBOUNCE_FRAMES):
-        self.frames = frames
-        self.recent = []
-        self.committed = "Nothing"
-
-    def push(self, label):
-        self.recent.append(label)
-        if len(self.recent) > self.frames:
-            self.recent.pop(0)
-        if len(self.recent) == self.frames and all(x == self.recent[0] for x in self.recent):
-            self.committed = self.recent[0]
-        return self.committed
-
-
-SPEED_LIMITS = {"Speed25": 25, "Speed55": 55}
-DEFAULT_LIMIT = 35
+DEFAULT_SPEED_LIMIT = 35     # the limit before we have seen any speed sign
 
 
 class Controller:
-    HOLD = 2.0          # seconds to wait at a stop sign / red light
-    COOLDOWN = 5.0      # seconds to ignore stop/red after going (so we drive past the sign)
+    SECONDS_TO_WAIT_AT_STOP = 2.0     # how long to sit still at a stop sign
+    SECONDS_TO_IGNORE_STOP  = 3.0     # after leaving a stop sign, ignore stops this long
 
     def __init__(self):
-        self.state = "DRIVE"
-        self.t_stop = 0.0
-        self.cooldown_until = 0.0
-        self.limit = DEFAULT_LIMIT     # current speed limit (25 / 35 / 55)
-        self._stop_sign = False        # True while we are stopped AT A STOP SIGN (not a red light)
+        self.speed_limit = DEFAULT_SPEED_LIMIT   # current limit: 25, 35, or 55
+        self.waiting_at_stop = False             # are we sitting at a stop sign right now?
+        self.stop_started_time = 0.0             # the time we began waiting at the stop sign
+        self.ignore_stop_until = 0.0             # ignore stop signs until this time
 
-    def update(self, label, now=None):
-        now = time.time() if now is None else now
+    def decide_speed(self, action, now):
+        """
+        Return the car's target speed this frame (0 = stopped).
+          action : the steady label from the Debouncer
+          now    : the current time in seconds
+        """
 
-        # ============================ TODO 1 ============================
-        # PERSISTENT SPEED LIMIT.
-        # If `label` is a speed sign, change self.limit to its number.
-        #   Hint:   if label in SPEED_LIMITS:
-        #               self.limit = SPEED_LIMITS[label]
-        # (write those two lines here)
+        # STEP 1 — SPEED LIMIT (a speed sign changes it; otherwise it stays).
+        # TODO: if action is "Speed25", set self.speed_limit to 25
+        #       if action is "Speed55", set self.speed_limit to 55
+        normal_speed = self.speed_limit / 10.0        # e.g. 55 -> 5.5
 
-        # ============================ TODO 2 ============================
-        # HOW FAST and WHICH WAY.
-        # Replace the two lines below using these hints:
-        #   cruise = self.limit / 10.0
-        #   steer  = -1 if label == "Left" else (1 if label == "Right" else 0)
-        cruise = 3.5     # <-- replace using the hint
-        steer = 0        # <-- replace using the hint
-        # ===============================================================
+        # STEP 2 — RED LIGHT: stop and wait.
+        # TODO: if action is "Red", return 0
+        #       (when the light turns green the action becomes "Green", so this stops applying)
 
-        # ---- the waiting logic is GIVEN to you (the README explains how it works) ----
+        # STEP 3 — STOP SIGN: a TIMED stop. Use these helpers:
+        #     self.waiting_at_stop        True/False: are we sitting at a stop sign now?
+        #     self.stop_started_time      the time we started waiting
+        #     self.ignore_stop_until      ignore stop signs until this time
+        #     self.SECONDS_TO_WAIT_AT_STOP , self.SECONDS_TO_IGNORE_STOP
+        #     now                         the current time in seconds
+        #
+        # TODO 3a: if we are ALREADY waiting at a stop sign (self.waiting_at_stop is True):
+        #            - work out how long we have waited:  now - self.stop_started_time
+        #            - if that is LESS than SECONDS_TO_WAIT_AT_STOP  ->  return 0  (keep waiting)
+        #            - otherwise we are done waiting:
+        #                 set self.waiting_at_stop = False
+        #                 set self.ignore_stop_until = now + SECONDS_TO_IGNORE_STOP
+        #                 return normal_speed            (drive on)
+        #
+        # TODO 3b: if we see a NEW stop sign (action is "Stop") AND now >= self.ignore_stop_until:
+        #            - set self.waiting_at_stop = True
+        #            - set self.stop_started_time = now
+        #            - return 0                          (begin the stop)
 
-        # RED LIGHT: wait here; go the moment it is no longer red (it turns green by itself).
-        if label == "Red":
-            self.state = "STOPPED"
-            self._stop_sign = False
-            return (0.0, 0)
-
-        # STOP SIGN: stop for HOLD seconds, then drive past (COOLDOWN stops it re-stopping).
-        if self.state == "STOPPED" and self._stop_sign:
-            if now - self.t_stop >= self.HOLD:
-                self.state = "DRIVE"
-                self._stop_sign = False
-                self.cooldown_until = now + self.COOLDOWN
-                return (cruise, 0)          # done waiting: drive on at the current limit
-            return (0.0, 0)                 # keep waiting
-        if label == "Stop" and now >= self.cooldown_until:
-            self.state = "STOPPED"
-            self._stop_sign = True
-            self.t_stop = now
-            return (0.0, 0)                 # start the stop
-
-        self.state = "DRIVE"
-        return (cruise, steer)              # normal driving
-
-    def display_speed(self):
-        return 0 if self.state == "STOPPED" else self.limit
+        # STEP 4 — nothing special: drive at the normal speed.
+        return normal_speed
