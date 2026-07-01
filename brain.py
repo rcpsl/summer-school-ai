@@ -18,7 +18,7 @@ DEFAULT_SPEED_LIMIT = 35     # the limit before we have seen any speed sign
 
 class Controller:
     SECONDS_TO_WAIT_AT_STOP = 2.0     # how long to sit still at a stop sign
-    SECONDS_TO_IGNORE_STOP  = 3.0     # after leaving a stop sign, ignore stops this long
+    SECONDS_TO_IGNORE_STOP  = 6.0     # after leaving a stop sign, ignore stops this long
 
     def __init__(self):
         self.speed_limit = DEFAULT_SPEED_LIMIT   # current limit: 25, 35, or 55
@@ -49,18 +49,26 @@ class Controller:
         #     self.SECONDS_TO_WAIT_AT_STOP , self.SECONDS_TO_IGNORE_STOP
         #     now                         the current time in seconds
         #
-        # TODO 3a: if we are ALREADY waiting at a stop sign (self.waiting_at_stop is True):
-        #            - work out how long we have waited:  now - self.stop_started_time
-        #            - if that is LESS than SECONDS_TO_WAIT_AT_STOP  ->  return 0  (keep waiting)
-        #            - otherwise we are done waiting:
-        #                 set self.waiting_at_stop = False
-        #                 set self.ignore_stop_until = now + SECONDS_TO_IGNORE_STOP
-        #                 return normal_speed            (drive on)
-        #
-        # TODO 3b: if we see a NEW stop sign (action is "Stop") AND now >= self.ignore_stop_until:
-        #            - set self.waiting_at_stop = True
-        #            - set self.stop_started_time = now
-        #            - return 0                          (begin the stop)
+
+        if self.waiting_at_stop:
+            # TODO 3a: if we are ALREADY waiting at a stop sign (self.waiting_at_stop is True):
+            #            - work out how long we have waited:  now - self.stop_started_time
+            #            - if that is LESS than SECONDS_TO_WAIT_AT_STOP  ->  return 0  (keep waiting)
+            #            - otherwise we are done waiting:
+            #                 set self.waiting_at_stop = False
+            #                 set self.ignore_stop_until = now + SECONDS_TO_IGNORE_STOP
+            #                 return normal_speed            (drive on)
+            #
+            waited_time = now - self.stop_started_time
+            pass
+        
+        elif action == "Stop" and now >= self.ignore_stop_until:
+            # TODO 3b: if we see a NEW stop sign (action is "Stop") AND now >= self.ignore_stop_until:
+            #            - set self.waiting_at_stop = True
+            #            - set self.stop_started_time = now
+            #            - return 0                          (begin the stop)
+            pass
+
 
         # STEP 4 — nothing special: drive at the normal speed.
         return normal_speed
